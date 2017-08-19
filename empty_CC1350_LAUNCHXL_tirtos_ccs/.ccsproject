@@ -12,6 +12,6 @@
 	<createSlaveProjects value=""/>
 	<ignoreDefaultDeviceSettings value="true"/>
 	<templateProperties value="id=empty_CC1350_LAUNCHXL_tirtos_ccs.projectspec.empty_CC1350_LAUNCHXL_tirtos_ccs,buildProfile=release,isHybrid=true,"/>
-	<origin value="/home/dan/ti/simplelink_cc13x0_sdk_1_40_00_10/examples/rtos/CC1350_LAUNCHXL/drivers/empty/tirtos/ccs/empty_CC1350_LAUNCHXL_tirtos_ccs.projectspec"/>
+	<origin value="c:\ti\simplelink_cc13x0_sdk_1_40_00_10\examples\rtos\CC1350_LAUNCHXL\drivers\empty\tirtos\ccs\empty_CC1350_LAUNCHXL_tirtos_ccs.projectspec"/>
 	<filesToOpen value=""/>
 </projectOptions>
