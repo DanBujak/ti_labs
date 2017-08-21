@@ -29,7 +29,7 @@
 		<link>
 			<name>Board.html</name>
 			<type>1</type>
-			<locationURI>source/ti/boards/CC1350_LAUNCHXL/Board.html</locationURI>
+			<locationURI>PROJECT_LOC/Board.html</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

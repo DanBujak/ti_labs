@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, Texas Instruments Incorporated
+ * Copyright (c) 2017, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,71 +25,71 @@
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
  * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /*
- *  ======== main_tirtos.c ========
+ *  ======== UARTMon.h ========
+ *
+ *  UART Monitor
+ *
+ *  The UARTMon module enables host communication with a target device using
+ *  the target's UART. The target device can respond to requests to read and
+ *  write memory at specified addresses. This module is built on top of the
+ *  UART Driver. To enter low power states using the Power Driver, this module
+ *  must be disabled. CCS includes features such as the Debug View and GUI
+ *  Composer that allows one to leverage the UART Monitor's capabilities.
  */
-#include <stdint.h>
 
-/* POSIX Header files */
-#include <pthread.h>
+#ifndef UARTMon_H_
+#define UARTMon_H_
 
-/* RTOS header files */
-#include <ti/sysbios/BIOS.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* Example/Board Header files */
-#include "Board.h"
-
-extern void *mainThread(void *arg0);
-
-/* Stack size in bytes */
-#define THREADSTACKSIZE    1024
+#define UARTMon_CMDSIZE         2
+#define UARTMon_ERRORSTATUS     0xFF
+#define UARTMon_READCMD         0xC0
+#define UARTMon_WRITECMD        0x80
 
 /*
- *  ======== main ========
+ *  UART baudrate.
+ *
+ *  Baudrate for the UART peripheral used by the monitor.
+ *  Default is 9600.
  */
-int main(void)
-{
-    pthread_t           thread;
-    pthread_attr_t      attrs;
-    struct sched_param  priParam;
-    int                 retc;
-    int                 detachState;
+#define UARTMon_BAUDRATE        9600
 
-    /* Call driver init functions */
-    Board_initGeneral();
+/*!
+ *  Board UART index.
+ *
+ *  Consult Board.h to find the index of the UART
+ *  peripherals available for your board.
+ *  By default Board_UART0 is used (0).
+ */
+#define UARTMon_INDEX           0
 
-    /* Set priority and stack size attributes */
-    pthread_attr_init(&attrs);
-    priParam.sched_priority = 1;
+/*
+ *  Monitor stack size.
+ *
+ *  This is the stack size of the monitor task.
+ *  Default value is 768.
+ */
+#define UARTMon_STACKSIZE       768
 
-    detachState = PTHREAD_CREATE_DETACHED;
-    retc = pthread_attr_setdetachstate(&attrs, detachState);
-    if (retc != 0) {
-        /* pthread_attr_setdetachstate() failed */
-        while (1);
-    }
+/*
+ *  ======== UARTMon_init ========
+ *  Initialize the UART and create a thread to handle the UART communication.
+ */
+void UARTMon_init();
 
-    pthread_attr_setschedparam(&attrs, &priParam);
+void *UARTMon_taskFxn(void *arg0);
 
-    retc |= pthread_attr_setstacksize(&attrs, THREADSTACKSIZE);
-    if (retc != 0) {
-        /* pthread_attr_setstacksize() failed */
-        while (1);
-    }
-
-    retc = pthread_create(&thread, &attrs, mainThread, NULL);
-    if (retc != 0) {
-        /* pthread_create() failed */
-        while (1);
-    }
-
-    BIOS_start();
-
-    return (0);
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* UARTMon_H_ */
