@@ -56,7 +56,7 @@
  */
 void *mainThread(void *arg0)
 {
-    / ADC
+    // ADC
     ADC_Handle adc;
     ADC_Params params;
 
