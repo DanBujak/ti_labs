@@ -65,7 +65,7 @@ void gpioButtonFxn0(uint_least8_t index)
 {
     /* Toggle an LED and increment count */
     GPIO_toggle(Board_GPIO_LED0);
-
+    UART_send("BTN0", 0);
     count = count - 1;
 }
 
@@ -78,7 +78,7 @@ void gpioButtonFxn1(uint_least8_t index)
 {
     /* Toggle an LED and decrement count */
     GPIO_toggle(Board_GPIO_LED1);
-
+    UART_send("BTN1", 0);
     count = count + 1;
 }
 
@@ -87,56 +87,68 @@ void gpioButtonFxn1(uint_least8_t index)
  */
 void *mainThread(void *arg0)
 {
-    // ADC
-    ADC_Handle adc;
-    ADC_Params params;
+  // ADC
+  ADC_Handle adc;
+  ADC_Params params;
 
-    /* 1 second delay */
-    uint32_t time = 1;
+  /* Call driver init functions */
+  GPIO_init();
+  ADC_init();
+  UARTMon_init();
+  // I2C_init();
+  // SDSPI_init();
+  // SPI_init();
+  // UART_init();
+  // Watchdog_init();
 
-    /* Call driver init functions */
-    GPIO_init();
-    ADC_init();
-    UARTMon_init();
-    // I2C_init();
-    // SDSPI_init();
-    // SPI_init();
-    // UART_init();
-    // Watchdog_init();
+  /* Turn on user LED */
+  GPIO_write(Board_GPIO_RLED, Board_GPIO_LED_ON);
+  GPIO_write(Board_GPIO_GLED, Board_GPIO_LED_OFF);
 
-    /* Turn on user LED */
-    GPIO_write(Board_GPIO_RLED, Board_GPIO_LED_ON);
-    GPIO_write(Board_GPIO_GLED, Board_GPIO_LED_OFF);
+  /* Install button callback */
+  GPIO_setCallback(Board_GPIO_BUTTON0, gpioButtonFxn0);
+  GPIO_setCallback(Board_GPIO_BUTTON1, gpioButtonFxn1);
 
-    /* Install button callback */
-    GPIO_setCallback(Board_GPIO_BUTTON0, gpioButtonFxn0);
-    GPIO_setCallback(Board_GPIO_BUTTON1, gpioButtonFxn1);
+  /* Enable interrupts */
+  GPIO_enableInt(Board_GPIO_BUTTON0);
+  GPIO_enableInt(Board_GPIO_BUTTON1);
 
-    /* Enable interrupts */
-    GPIO_enableInt(Board_GPIO_BUTTON0);
-    GPIO_enableInt(Board_GPIO_BUTTON1);
+  // Open ADC
+  ADC_Params_init(&params);
+  adc = ADC_open(Board_ADC0, &params);
+  if (adc == NULL) {
+      // ADC_open() failed
+      while (1);
+  }
 
-    // Open ADC
-    ADC_Params_init(&params);
-    adc = ADC_open(Board_ADC0, &params);
-    if (adc == NULL) {
-        // ADC_open() failed
-        while (1);
+  while (uart_ready() != 1)
+  {
+    usleep(100);
+  }
+
+  UART_send("\r\nEntering Main... \r\n", 0);
+
+
+  while (1) {
+    usleep(100000);
+    int_fast16_t res;
+
+    res = ADC_convert(adc, &adcValue);
+    if (res == ADC_STATUS_SUCCESS) {
+      if (adcValue > threshold) {
+        GPIO_write(Board_GPIO_RLED, Board_GPIO_LED_ON);
+        trigger = 1;
+      }
+      else {
+        GPIO_write(Board_GPIO_RLED, Board_GPIO_LED_OFF);
+        trigger = 0;
+      }
     }
 
-    while (1) {
-        sleep(time);
-        int_fast16_t res;
+    GPIO_toggle(Board_GPIO_GLED);
+    //UART_send("MAIN\r\n", 0);
+  }
 
-        res = ADC_convert(adc, &adcValue);
-        if (res == ADC_STATUS_SUCCESS) {
-            if (adcValue > 100) {
-                GPIO_toggle(Board_GPIO_RLED);
-            }
-        }
-
-        GPIO_toggle(Board_GPIO_GLED);
-    }
-
-    return (NULL);
+  //return (NULL);
 }
+

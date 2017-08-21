@@ -38,13 +38,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/* POSIX Header files */
-#include <pthread.h>
-
-/* Driver Header files */
-#include <ti/drivers/UART.h>
 #include "UARTMon.h"
 #include "globals.h"
+
+UART_Handle hUART;
+uint8_t uart_rdy_flag = 2;
 
 char buffer_tx[10] = "tencharbf";
 
@@ -53,39 +51,39 @@ char buffer_tx[10] = "tencharbf";
  */
 void UARTMon_init()
 {
-    pthread_t           uartmonThread;
-    pthread_attr_t      attrs;
-    struct sched_param  priParam;
-    int                 retc;
+  pthread_t           uartmonThread;
+  pthread_attr_t      attrs;
+  struct sched_param  priParam;
+  int                 retc;
 
-    /* Call driver init functions */
-    UART_init();
+  /* Call driver init functions */
+  UART_init();
 
-    /* Create UARTMon_taskFxn thread */
-    pthread_attr_init(&attrs);
+  /* Create UARTMon_taskFxn thread */
+  pthread_attr_init(&attrs);
 
-    /* Set priority and stack size attributes */
-    retc = pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    if (retc != 0) {
-        /* pthread_attr_setdetachstate() failed */
-        while (1);
-    }
+  /* Set priority and stack size attributes */
+  retc = pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+  if (retc != 0) {
+    /* pthread_attr_setdetachstate() failed */
+    while (1);
+  }
 
-    retc |= pthread_attr_setstacksize(&attrs, UARTMon_STACKSIZE);
-    if (retc != 0) {
-        /* pthread_attr_setstacksize() failed */
-        while (1);
-    }
+  retc |= pthread_attr_setstacksize(&attrs, UARTMon_STACKSIZE);
+  if (retc != 0) {
+    /* pthread_attr_setstacksize() failed */
+    while (1);
+  }
 
-    /* Create UARTMon_taskFxn thread */
-    priParam.sched_priority = sched_get_priority_min(0);
-    pthread_attr_setschedparam(&attrs, &priParam);
+  /* Create UARTMon_taskFxn thread */
+  priParam.sched_priority = sched_get_priority_min(0);
+  pthread_attr_setschedparam(&attrs, &priParam);
 
-    retc = pthread_create(&uartmonThread, &attrs, UARTMon_taskFxn, NULL);
-    if (retc != 0) {
-        /* pthread_create() failed */
-        while (1);
-    }
+  retc = pthread_create(&uartmonThread, &attrs, UARTMon_taskFxn, NULL);
+  if (retc != 0) {
+    /* pthread_create() failed */
+    while (1);
+  }
 }
 
 /*
@@ -95,62 +93,76 @@ void UARTMon_init()
  */
 void *UARTMon_taskFxn(void *arg0)
 {
-    UART_Handle uart;
-    UART_Params uartParams;
-    uint8_t input[UARTMon_CMDSIZE];
-    uint8_t cmd;
+  UART_Params uartParams;
+  uint8_t input[UARTMon_CMDSIZE];
+  uint8_t cmd;
+  /* Initialize and open UART */
+  UART_Params_init(&uartParams);
 
-    /* Initialize and open UART */
-    UART_Params_init(&uartParams);
+  /* Only UART_RETURN_FULL & UART_DATA_BINARY supported on CC1350 */
+  uartParams.writeDataMode = UART_DATA_BINARY;
+  uartParams.readDataMode = UART_DATA_BINARY;
+  uartParams.readReturnMode = UART_RETURN_FULL;
+  uartParams.readEcho = UART_ECHO_OFF;          /* Not supported on CC1350 */
+  uartParams.baudRate = 115200;
 
-    uartParams.writeDataMode = UART_DATA_BINARY;
-    uartParams.readDataMode = UART_DATA_BINARY;
-    uartParams.readReturnMode = UART_RETURN_FULL;
+  hUART = UART_open(UARTMon_INDEX, (UART_Params *) &uartParams);
 
-    uart = UART_open(UARTMon_INDEX, (UART_Params *) &uartParams);
+  if (hUART == NULL) {
+      /* UART_open() failed */
+      while (1);
+  }
 
-    if (uart == NULL) {
-        /* UART_open() failed */
-        while (1);
+  uart_rdy_flag = 1;
+
+  while (UART_read(hUART, input, sizeof(input)) > 0) {
+
+    /* First byte is the command */
+    cmd = input[0];
+
+    switch (cmd) {
+      case 'a':
+        input[0] = 'A';
+        UART_write(hUART, input, 1);
+        break;
+
+      case 'b':
+        input[0] = 'B';
+        UART_write(hUART, input, 1);
+        break;
+
+      case 'c':
+        UART_write(hUART, buffer_tx, 4);
+        break;
+
+      case 'x':
+        UART_send("\r\nGOT X\r\n", 0);
+        break;
+
+      default:
+        input[0] = 'X';
+        UART_write(hUART, input, 1);
+        break;
     }
+  }
 
-    while (UART_read(uart, input, sizeof(input)) > 0) {
+  return (NULL);
+}
 
-        /* First byte is the command */
-        cmd = input[0];
 
-        switch (cmd) {
-            case 'a':
-                input[0] = 'A';
-                UART_write(uart, input, 1);
+int_fast32_t UART_send(const void *buffer, size_t size)
+{
+  uint16_t msg_len = size;
 
-                break;
+  if (msg_len == 0)
+  {
+    msg_len = strlen(buffer);
+  }
 
-            case 'b':
-                input[0] = 'B';
-                UART_write(uart, input, 1);
+  return UART_write(hUART, buffer, msg_len);
+}
 
-                break;
-
-            case 'c':
-                /* write the data from host to the memory directly */
-                //UART_read(uart, (void *)address, length);
-
-                /* send the cmd + length byte back as status */
-                //UART_write(uart, input, 1);
-
-                //UART_write(uart, (void *)address, length);
-                UART_write(uart, buffer_tx, 4);
-
-                break;
-
-            default:
-                input[0] = 'X';
-                UART_write(uart, input, 1);
-
-                break;
-        }
-    }
-
-    return (NULL);
+uint8_t uart_ready(void)
+{
+  return uart_rdy_flag;
 }

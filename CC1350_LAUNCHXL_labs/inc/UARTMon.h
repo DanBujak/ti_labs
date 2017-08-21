@@ -50,10 +50,23 @@
 extern "C" {
 #endif
 
-#define UARTMon_CMDSIZE         2
+/*
+ * UART FORMAT
+ * Byte0            Byte1     Byte2       Byte3
+ * Premable (0x55)  Command   Read/Write  Length
+ */
+#define UARTMon_CMDSIZE         4
 #define UARTMon_ERRORSTATUS     0xFF
 #define UARTMon_READCMD         0xC0
 #define UARTMon_WRITECMD        0x80
+
+/* POSIX Header files */
+#include <pthread.h>
+
+/* Driver Header files */
+#include <ti/drivers/UART.h>
+
+extern UART_Handle hUART;
 
 /*
  *  UART baudrate.
@@ -87,6 +100,10 @@ extern "C" {
 void UARTMon_init();
 
 void *UARTMon_taskFxn(void *arg0);
+
+int_fast32_t UART_send(const void *buffer, size_t size);
+
+uint8_t uart_ready(void);
 
 #ifdef __cplusplus
 }
