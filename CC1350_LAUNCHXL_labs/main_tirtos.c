@@ -51,6 +51,13 @@ extern void *mainThread(void *arg0);
 /* Stack size in bytes */
 #define THREADSTACKSIZE    1024
 
+Task_Struct workTask;
+/* Make sure we have nice 8-byte alignment on the stack to avoid wasting memory */
+#pragma DATA_ALIGN(workTaskStack, 8)
+#define STACKSIZE 1024
+static uint8_t workTaskStack[STACKSIZE];
+
+
 /*
  *  ======== main ========
  */

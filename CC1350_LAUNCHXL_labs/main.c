@@ -42,6 +42,7 @@
 /* Driver Header files */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/ADC.h>
+#include <ti/sysbios/knl/Clock.h>
 // #include <ti/drivers/I2C.h>
 // #include <ti/drivers/SDSPI.h>
 // #include <ti/drivers/SPI.h>
@@ -53,34 +54,7 @@
 /* Board Header file */
 #include "Board.h"
 #include "globals.h"
-
-/* Variable to be read and modified by GUI Composer */
-volatile int32_t count = 0;
-
-/*
- *  ======== gpioButtonFxn0 ========
- *  Callback function for the GPIO interrupt on Board_GPIO_BUTTON0.
- */
-void gpioButtonFxn0(uint_least8_t index)
-{
-    /* Toggle an LED and increment count */
-    GPIO_toggle(Board_GPIO_LED0);
-    UART_send("BTN0", 0);
-    count = count - 1;
-}
-
-/*
- *  ======== gpioButtonFxn1 ========
- *  Callback function for the GPIO interrupt on Board_GPIO_BUTTON1.
- *  This may not be used for all boards.
- */
-void gpioButtonFxn1(uint_least8_t index)
-{
-    /* Toggle an LED and decrement count */
-    GPIO_toggle(Board_GPIO_LED1);
-    UART_send("BTN1", 0);
-    count = count + 1;
-}
+#include "gpio.h"
 
 /*
  *  ======== mainThread ========
@@ -92,7 +66,7 @@ void *mainThread(void *arg0)
   ADC_Params params;
 
   /* Call driver init functions */
-  GPIO_init();
+  gpio_initialize();
   ADC_init();
   UARTMon_init();
   // I2C_init();
@@ -100,18 +74,6 @@ void *mainThread(void *arg0)
   // SPI_init();
   // UART_init();
   // Watchdog_init();
-
-  /* Turn on user LED */
-  GPIO_write(Board_GPIO_RLED, Board_GPIO_LED_ON);
-  GPIO_write(Board_GPIO_GLED, Board_GPIO_LED_OFF);
-
-  /* Install button callback */
-  GPIO_setCallback(Board_GPIO_BUTTON0, gpioButtonFxn0);
-  GPIO_setCallback(Board_GPIO_BUTTON1, gpioButtonFxn1);
-
-  /* Enable interrupts */
-  GPIO_enableInt(Board_GPIO_BUTTON0);
-  GPIO_enableInt(Board_GPIO_BUTTON1);
 
   // Open ADC
   ADC_Params_init(&params);
@@ -123,7 +85,9 @@ void *mainThread(void *arg0)
 
   while (uart_ready() != 1)
   {
-    usleep(100);
+    /* 100ms wait */
+    Task_sleep(100 * (1000 / Clock_tickPeriod));
+    //usleep(100);
   }
 
   UART_send("\r\nEntering Main... \r\n", 0);
@@ -145,7 +109,7 @@ void *mainThread(void *arg0)
       }
     }
 
-    GPIO_toggle(Board_GPIO_GLED);
+
     //UART_send("MAIN\r\n", 0);
   }
 
